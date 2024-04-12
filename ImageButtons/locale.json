@@ -1,8 +1,37 @@
 {
     "translations": {
         "de": {
-            "Translation 1": "Übersetzung 1",
-            "Translation 2": "Übersetzung 2"
+            "TileVisu Button Tile": "Tile Visu Button Kachel",
+            "Tile configuration:": "Kachelkonfiguration:",
+            "Example of a fully configured tile": "Beispiel einer voll konfigurierten Kachel",
+            "Tile design": "Kacheldesign",
+            "Tile": "Kachel",
+            "Standard background image": "Standard-Hintergrundbild",
+            "Background image": "Hintergrundbild",
+            "Image transparency (values from 0 to 1)": "Transparenz Bild (Werte von 0 bis 1)",
+            "Tile background color": "Kachel-Hintergrundfarbe",
+            "Donations / Gifts": "Spenden / Schenkungen",
+            "Say thank you and support the developer of this module:": "Sag Danke und unterstütze den Entwickler dieses Moduls:",
+            "Switch": "Schalter",
+            "Switch:": "Schalter:",
+            "Switch1:": "Schalter1",
+            "Switch2:": "Schalter2",
+            "Switch3:": "Schalter3",
+            "Switch4:": "Schalter4",
+            "Switch5:": "Schalter5",
+            "Switch6:": "Schalter6",
+            "Switch7:": "Schalter7",
+            "Switch8:": "Schalter8",
+            "Switch9:": "Schalter9",
+            "Switch10:": "Schalter10",
+            "Setting": "Einstellung",
+            "Font size": "Schriftgröße",
+            "Overwrite variable name:": "Variablenname überschreiben",
+            "Display value": "Wert anzeigen",
+            "Use variable icon": "Variablenicon verwenden",
+            "Display icon": "Icon anzeigen",
+            "Display variable name": "Variablenname anzeigen",
+            "Width": "Breite"
         }
     }
 }

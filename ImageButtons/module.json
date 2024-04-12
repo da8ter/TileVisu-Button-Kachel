@@ -1,6 +1,6 @@
 {
     "id": "{21A6460A-A907-7FBC-898F-745EE3CD1E14}",
-    "name": "TileVisuImageButtons",
+    "name": "TileVisu Button Tile",
     "type": 3,
     "vendor": "",
     "aliases": [],
@@ -8,5 +8,5 @@
     "childRequirements": [],
     "implemented": [],
     "prefix": "RMH",
-    "url": "https://github.com/da8ter/TileVisu-Kachelsammlung/tree/main/ImageVariable"
+    "url": "https://github.com/da8ter/TileVisu-Buttons/blob/eb68da8347927283c45ce3db13644baaf88af244/ImageButtons/README.md"
 }
