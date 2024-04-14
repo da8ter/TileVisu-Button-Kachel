@@ -40,7 +40,7 @@ __Kacheldesign__
 Name     | Beschreibung
 -------- | ------------------
 Standard-Hintergrundbild|Ein-/Ausschalten des Standard-Hintergrundbildes.
-Hintergrundbild|: Auswahl eines eigenen Medienobjekts als Hintergrund.
+Hintergrundbild|Auswahl eines eigenen Medienobjekts als Hintergrund.
 Transparenz Bild|Einstellung der Transparenz des Hintergrundbildes, um es abzudunkeln oder farblich anzupassen. 
 Kachelhintergrundfarbe|Farbe des Kachelhintergrunds (wird nur bei eingestellter Bildtransparenz sichtbar)
 
