@@ -49,7 +49,7 @@ Name     | Beschreibung
 -------- | ------------------
 Schalter1|Bool-Variable die geschaltet werden soll. Die Variable benötigt ein Variablenprofil mit Assoziationen. Icon und die Farbe des Button werden aus dem Variablenprofil ausgelesen. Wenn dort keine Farbe eingestellt ist wird nur der Text angezeigt und kein farbiger Button!
 Einstellung|Öffnet ein Fenster mit weiteren Konfigurationsmöglichkeiten.
-Schriftgrößet|Stellt die Schriftgröße der Buttonbeschriftung ein.
+Schriftgröße|Stellt die Schriftgröße der Buttonbeschriftung ein.
 Schalter 2 bis 10|siehe Schalter 1
 
 __Einstellungen__
