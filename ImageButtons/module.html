@@ -630,14 +630,6 @@
                         if (!document.getElementById("schalter1name").classList.contains("hidden")) schalter1doppelpunkt.className = 'schalter1asso';
                         break;
                     case 'schalter1icon':
-                       // if (decodedData[parameter] !== "Transparent") {
-                       //     element.className = 'schaltericon';
-                       //     element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                       //     schalter1.className = 'schalter1';
-                       // }
-
-
-
                         if (decodedData[parameter] !== "Transparent") {
                             // Hole das Icon-Mapping
                             const originalIcon = decodedData[parameter];
@@ -654,14 +646,6 @@
                             // Element ausblenden, wenn Transparent
                             element.classList.add('hidden');
                         }
-
-
-
-
-
-
-
-
                         break;
                     case 'schalter1name':
                         element.className = 'schalter1name';
@@ -682,10 +666,21 @@
                         if (!document.getElementById("schalter2name").classList.contains("hidden")) schalter2doppelpunkt.className = 'schalter2asso';
                         break;
                     case 'schalter2icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter2.className = 'schalter2';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter2name':
@@ -707,10 +702,21 @@
                         if (!document.getElementById("schalter3name").classList.contains("hidden")) schalter3doppelpunkt.className = 'schalter3asso';
                         break;
                     case 'schalter3icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter3.className = 'schalter3';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter3name':
@@ -732,10 +738,21 @@
                         if (!document.getElementById("schalter4name").classList.contains("hidden")) schalter4doppelpunkt.className = 'schalter4asso';
                         break;
                     case 'schalter4icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter4.className = 'schalter4';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter4name':
@@ -757,10 +774,21 @@
                         if (!document.getElementById("schalter5name").classList.contains("hidden")) schalter5doppelpunkt.className = 'schalter5asso';
                         break;
                     case 'schalter5icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter5.className = 'schalter5';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter5name':
@@ -785,10 +813,21 @@
                         if (!document.getElementById("schalter6name").classList.contains("hidden")) schalter6doppelpunkt.className = 'schalter6asso';
                         break;
                     case 'schalter6icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter6.className = 'schalter6';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter6name':
@@ -810,10 +849,21 @@
                         if (!document.getElementById("schalter7name").classList.contains("hidden")) schalter7doppelpunkt.className = 'schalter7asso';
                         break;
                     case 'schalter7icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter7.className = 'schalter7';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter7name':
@@ -835,10 +885,21 @@
                         if (!document.getElementById("schalter8name").classList.contains("hidden")) schalter8doppelpunkt.className = 'schalter8asso';
                         break;
                     case 'schalter8icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter8.className = 'schalter8';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter8name':
@@ -860,10 +921,21 @@
                         if (!document.getElementById("schalter9name").classList.contains("hidden")) schalter9doppelpunkt.className = 'schalter9asso';
                         break;
                     case 'schalter9icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter9.className = 'schalter9';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter9name':
@@ -885,10 +957,21 @@
                         if (!document.getElementById("schalter10name").classList.contains("hidden")) schalter10doppelpunkt.className = 'schalter10asso';
                         break;
                     case 'schalter10icon':
-                        if (decodedData[parameter] !== "Transparent") {
-                            element.className = 'schaltericon';
-                            element.src = '../../legacy/img/icons/' + decodedData[parameter] + '.svg';
-                            schalter10.className = 'schalter10';
+                    if (decodedData[parameter] !== "Transparent") {
+                            // Hole das Icon-Mapping
+                            const originalIcon = decodedData[parameter];
+                            const mappedIcon = iconMapping[originalIcon] || originalIcon; // Fallback auf das Original, wenn kein Mapping vorhanden
+
+                            // Element sichtbar machen und Klassen hinzufügen
+                            element.classList.remove('hidden');
+                            element.classList.add('schaltericon');
+                            element.classList.add('fa-light');
+                            element.classList.add('fa-' + mappedIcon.toLowerCase());
+
+
+                        } else {
+                            // Element ausblenden, wenn Transparent
+                            element.classList.add('hidden');
                         }
                         break;
                     case 'schalter10name':
