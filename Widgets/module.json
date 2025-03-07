@@ -1,0 +1,12 @@
+{
+    "id": "{3BBB8693-CE03-EC08-DFE0-C7B0AF152C60}",
+    "name": "TileVisu Widgets Tile",
+    "type": 3,
+    "vendor": "",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "WDT",
+    "url": "https://www.heise.de"
+}

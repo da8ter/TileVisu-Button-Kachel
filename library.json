@@ -1,12 +1,12 @@
 {
-    "id": "{09A93475-7EB7-9AE6-26AC-F7AFD90F4676}",
-    "name": "TileVisu Button Kachel",
+    "id": "{92F18F77-19CE-39ED-FDAB-FD61A10A9BB6}",
+    "name": "TileVisu Widgets Kachel",
     "author": "Stephan Sprick",
-    "url": "https://github.com/da8ter/TileVisu-Button-Kachel.git",
+    "url": "",
     "compatibility": {
         "version": "7.2"
     },
-    "version": "1.0.1",
+    "version": "1.0.0",
     "build": 0,
     "date": 0
 }
