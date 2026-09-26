@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Regressionstests ohne laufendes Symcon: Module Strict, Payload wie bisher.
+// Regressionstests ohne laufendes Symcon: Module Strict, Payload wie bisher, Hintergrund über den eigenen Hook.
 require __DIR__ . '/bootstrap.php';
 set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -24,6 +24,8 @@ foreach ((new ReflectionClass(TileVisuWidgetsTile::class))->getMethods() as $met
     if (!$typed) $untyped[] = $method->getName();
 }
 check($untyped === [], 'Every module method has typed parameters and a return type');
+check((string) (new ReflectionMethod(TileVisuWidgetsTile::class, 'ProcessHookData'))->getReturnType() === 'void',
+    'ProcessHookData returns void, compatible with the HookInstance overlay');
 try {
     (new class extends IPSModuleStrict { public function probe(): void { $this->RegisterPropertyBoolean('X', 1); } })->probe();
     throw new LogicException('int accepted as bool');
@@ -152,5 +154,137 @@ foreach (['bgImage', 'Schalter11', 'Schriftgroesse', ''] as $ident) {
         check(str_starts_with($e->getMessage(), 'Invalid ident:') && $actions === [], "Ident \"$ident\" is rejected");
     }
 }
+
+// --- Hintergrund über den eigenen Hook -----------------------------------------------------------------
+world();
+$hookAvailable = true;
+$m = tile();
+check($m->hooks === ['widgetsimages/12345'] && $m->buffers['ImageHook'] === '1', 'Hook is registered natively in Create');
+check($m->attributes['ImageHookToken'] === '', 'No token before ApplyChanges');
+$m->ApplyChanges();
+$token = $m->attributes['ImageHookToken'];
+check(strlen($token) === 32 && ctype_xdigit($token), 'ApplyChanges creates a 128-bit hook token');
+$state = snapshot($m);
+$version = substr(hash('sha256', $defaultUri), 0, 16);
+check($state['bgimage'] === '/hook/widgetsimages/12345?k=bgimage&v=' . $version . '&t=' . $token, 'Default background is sent as versioned hook address');
+check(latest($m)['bgimage'] === $state['bgimage'], 'The update message uses the same address');
+$document = $m->GetVisualizationTile();
+check(!str_contains($document, 'base64'), 'Tile document carries no Base64 image');
+check(strlen($document) < strlen($html) + 1000, 'Tile document is module.html plus a small initial script');
+$m->ApplyChanges();
+check($m->attributes['ImageHookToken'] === $token, 'Token stays stable across ApplyChanges');
+
+$q = query($state['bgimage']);
+$body = $m->hook($q);
+check($m->status === 200 && $body === $png, 'Hook delivers the background bytes');
+check(sentHeader($m, 'Content-Type') === 'image/png' && sentHeader($m, 'Content-Length') === (string) strlen($png), 'Hook sends image type and length');
+check(sentHeader($m, 'Cache-Control') === 'private, max-age=31536000, immutable', 'Current version may be cached long, privately');
+check(sentHeader($m, 'ETag') === '"' . $version . '"' && sentHeader($m, 'X-Content-Type-Options') === 'nosniff', 'ETag is the version, nosniff is set');
+$body = $m->hook($q, ['HTTP_IF_NONE_MATCH' => '"' . $version . '"']);
+check($m->status === 304 && $body === '' && sentHeader($m, 'Content-Type') === null, 'Matching If-None-Match answers 304 without body');
+$body = $m->hook(['k' => 'bgimage', 'v' => 'veraltet', 't' => $token]);
+check($m->status === 200 && $body === $png && sentHeader($m, 'Cache-Control') === 'no-cache', 'Outdated address gets the current content uncached');
+$m->hook(['k' => 'bgimage', 'v' => 'veraltet', 't' => $token], ['HTTP_IF_NONE_MATCH' => '"' . $version . '"']);
+check($m->status === 200, 'No 304 for an outdated address');
+$m->hook(['k' => 'bgimage', 't' => $token]);
+check($m->status === 200 && sentHeader($m, 'Cache-Control') === 'no-cache', 'Address without version is not cached');
+$rejected = ['wrong token' => ['k' => 'bgimage', 'v' => $version, 't' => str_repeat('0', 32)], 'missing token' => ['k' => 'bgimage', 'v' => $version],
+    'empty token' => ['k' => 'bgimage', 't' => ''], 'token as array' => ['k' => 'bgimage', 't' => [$token]]];
+foreach ($rejected as $label => $get) {
+    $body = $m->hook($get);
+    check($m->status === 403 && $body === '' && $m->sent === [], "Hook rejects the request with 403 ($label)");
+}
+$unknown = ['unknown key' => ['k' => 'schalter1', 't' => $token], 'missing key' => ['t' => $token],
+    'key in other case' => ['k' => 'BGIMAGE', 't' => $token], 'key as array' => ['k' => ['bgimage'], 't' => $token]];
+foreach ($unknown as $label => $get) {
+    $body = $m->hook($get);
+    check($m->status === 404 && $body === '' && $m->sent === [], "Hook answers 404 ($label)");
+}
+
+image(500, 'media/500.jpg', 'jpeg-bytes-1');
+$m->properties['bgImage'] = 500;
+$m->ApplyChanges();
+$address = latest($m)['bgimage'];
+check(str_starts_with($address, '/hook/widgetsimages/12345?k=bgimage&v=') && $address !== $state['bgimage'], 'Own background image gets its own address');
+check($m->hook(query($address)) === 'jpeg-bytes-1' && sentHeader($m, 'Content-Type') === 'image/jpeg', 'Hook delivers the own image with its type');
+image(500, 'media/500.jpg', 'jpeg-bytes-2');
+$m->ApplyChanges();
+$changed = latest($m)['bgimage'];
+check($changed !== $address && $m->hook(query($changed)) === 'jpeg-bytes-2', 'Changed image content gets a new address');
+check($m->hook(query($address)) === 'jpeg-bytes-2' && sentHeader($m, 'Cache-Control') === 'no-cache', 'The old address delivers the new content uncached');
+image(500, 'media/500.JPG', 'jpeg-bytes-3');
+$m->ApplyChanges();
+check(!isset(latest($m)['bgimage']), 'Unsupported file name stays without background as before');
+$m->hook(['k' => 'bgimage', 't' => $token]);
+check($m->status === 404, 'Hook answers 404 while no background is shown');
+
+// --- Rückfall ohne Hook --------------------------------------------------------------------------------
+world();
+image(500, 'media/500.jpg', 'jpeg-bytes');
+$n = tile(12346);
+$n->ApplyChanges();
+check($n->hooks === ['widgetsimages/12346'] && ($n->buffers['ImageHook'] ?? null) === '', 'An unregistered hook is remembered as inactive');
+check(latest($n)['bgimage'] === $defaultUri && snapshot($n)['bgimage'] === $defaultUri, 'Without hook the default background stays embedded exactly as before');
+check($n->attributes['ImageHookToken'] === '', 'Without hook no token is created');
+$n->properties['bgImage'] = 500;
+$n->ApplyChanges();
+check(latest($n)['bgimage'] === 'data:image/jpeg;base64,' . base64_encode('jpeg-bytes'), 'Without hook the own image stays embedded exactly as before');
+$body = $n->hook(['k' => 'bgimage', 't' => '']);
+check($n->status === 403 && $body === '', 'Without hook the endpoint answers nothing');
+
+// --- Bilder über der Ausgabegrenze bleiben eingebettet -------------------------------------------------
+world();
+$hookAvailable = true;
+$options['ScriptOutputBufferLimit'] = 32768; // kleiner als der Standard-Hintergrund
+$m = tile();
+$m->ApplyChanges();
+check(latest($m)['bgimage'] === $defaultUri && snapshot($m)['bgimage'] === $defaultUri, 'Default background above the hook output limit stays embedded');
+$options['ScriptOutputBufferLimit'] = 1024 + 3000; // 3000 Byte Nutzlast
+image(500, 'big.png', str_repeat('x', 3000));
+$m->properties['bgImage'] = 500;
+$m->ApplyChanges();
+check(str_starts_with(latest($m)['bgimage'], '/hook/widgetsimages/12345?k=bgimage&v='), 'Image exactly at the limit goes through the hook');
+image(500, 'big.png', str_repeat('x', 3001));
+$m->ApplyChanges();
+check(latest($m)['bgimage'] === 'data:image/png;base64,' . base64_encode(str_repeat('x', 3001)), 'One byte above the limit stays embedded');
+unset($options['ScriptOutputBufferLimit']);
+$m->ApplyChanges();
+check(str_starts_with(latest($m)['bgimage'], '/hook/'), 'With the factory limit (1 MiB) it goes through the hook again');
+
+// --- Kein Hintergrund wird kodiert, wenn keiner angezeigt wird -----------------------------------------
+world();
+variable(101, true, 'An', 'Licht');
+$m = tile();
+$m->properties['BG_Off'] = false;
+$m->properties['Schalter1'] = 101;
+$m->ApplyChanges();
+$state = snapshot($m);
+check(!isset(latest($m)['bgimage']) && !isset($state['bgimage']), 'Without background the payload carries no bgimage key, as before');
+check($m->defaultEncodings === 0 && $mediaContentCalls === 0, 'Without background nothing is read or encoded (update and tile)');
+$m->updates = [];
+$m->MessageSink(0, 101, VM_UPDATE, []);
+check(count($m->updates) === 2 && $m->defaultEncodings === 0 && $mediaContentCalls === 0, 'Variable updates never encode the background');
+$m->properties['BG_Off'] = true;
+$m->ApplyChanges();
+check($m->defaultEncodings === 1 && latest($m)['bgimage'] === $defaultUri, 'A shown default background is encoded once per full update');
+$m->MessageSink(0, 101, VM_UPDATE, []);
+check($m->defaultEncodings === 1, 'Variable updates do not encode the shown background either');
+foreach (['own.png' => [MEDIATYPE_IMAGE, 1], 'own.svg' => [MEDIATYPE_IMAGE, 0], 'not-an-image.png' => [0, 0]] as $file => [$type, $reads]) {
+    image(500, $file, 'own', $type);
+    $m->properties['bgImage'] = 500;
+    $m->defaultEncodings = 0;
+    $mediaContentCalls = 0;
+    $m->ApplyChanges();
+    check($m->defaultEncodings === 0 && $mediaContentCalls === $reads && isset(latest($m)['bgimage']) === ($reads === 1),
+        "Selected media $file: default background not encoded, media read only if shown");
+}
+world();
+$hookAvailable = true;
+$m = tile();
+$m->ApplyChanges();
+$m->defaultEncodings = 0;
+$m->hook(['k' => 'bgimage', 't' => str_repeat('f', 32)]);
+$m->hook(['k' => 'schalter1', 't' => $m->attributes['ImageHookToken']]);
+check($m->defaultEncodings === 0, 'Rejected hook requests encode nothing');
 
 echo 'OK' . PHP_EOL;

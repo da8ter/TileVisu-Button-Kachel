@@ -17,6 +17,7 @@ class TileVisuWidgetsTile extends IPSModuleStrict
         'gif' => 'image/gif', 'png' => 'image/png', 'ico' => 'image/x-icon'
     ];
     private const DEFAULT_BACKGROUND = __DIR__ . '/../imgs/kachelhintergrund1.png';
+    private const IMAGE_HOOK = 'widgetsimages/';
 
     public function Create(): void
     {
@@ -113,6 +114,11 @@ class TileVisuWidgetsTile extends IPSModuleStrict
         $this->RegisterPropertyBoolean('Schalter10AssoSwitch', true);
         // Visualisierungstyp auf 1 setzen, da wir HTML anbieten möchten
         $this->SetVisualizationType(1);
+
+        // Hintergrundbild über einen eigenen Hook statt als Data-URI in jedem Kacheldokument: der Browser
+        // cacht es unter versionierter Adresse, das Dokument bleibt klein. Ohne Hook wie bisher eingebettet.
+        $this->RegisterAttributeString('ImageHookToken', '');
+        $this->SetBuffer('ImageHook', $this->RegisterHook(self::IMAGE_HOOK . $this->InstanceID) ? '1' : '');
     }
 
     public function ApplyChanges(): void
@@ -124,6 +130,8 @@ class TileVisuWidgetsTile extends IPSModuleStrict
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
         }
+
+        $this->EnsureImageHookToken();
 
         //Referenzen Registrieren (0 = nichts ausgewählt)
         foreach ($this->GetReferenceList() as $ref) {
@@ -279,27 +287,131 @@ class TileVisuWidgetsTile extends IPSModuleStrict
             $result["schalter{$i}altname"] = $this->ReadPropertyString("Schalter{$i}AltName");
         }
 
-        // Prüfe vorweg, ob ein Bild ausgewählt wurde
-        $imageID = $this->ReadPropertyInteger('bgImage');
-        if (IPS_MediaExists($imageID)) {
-            $image = IPS_GetMedia($imageID);
-            if ($image['MediaType'] === MEDIATYPE_IMAGE) {
-                // Falls ja, ermittle den Anfang der src basierend auf dem Dateitypen; ohne bekannten Typ ist das
-                // Bild kein unterstützter Dateityp. IPS_GetMediaContent liefert den Inhalt bereits base64-codiert
-                $imageFile = explode('.', $image['MediaFile']);
-                $mime = self::IMAGE_TYPES[end($imageFile)] ?? '';
-                if ($mime !== '') {
-                    $result['bgimage'] = 'data:' . $mime . ';base64,' . IPS_GetMediaContent($imageID);
-                }
-            }
-        } else {
-            $imageContent = 'data:image/png;base64,' . base64_encode((string) file_get_contents(self::DEFAULT_BACKGROUND));
-            if ($this->ReadPropertyBoolean('BG_Off')) {
-                $result['bgimage'] = $imageContent;
-            }
+        // Hintergrund nur, wenn einer angezeigt wird; mit registriertem Hook als Adresse statt als Data-URI
+        $background = $this->BackgroundImage();
+        if ($background !== '') {
+            $result['bgimage'] = $this->ImageReference('bgimage', $background);
         }
 
         return $this->EncodeJSON($result);
+    }
+
+    // Der angezeigte Hintergrund als Data-URI, leer ohne Hintergrund. Ein ausgewähltes Medienobjekt hat Vorrang
+    // (unabhängig vom Standard-Hintergrund); ist es kein unterstütztes Bild, gibt es keinen Hintergrund.
+    // Kodiert wird nur, was angezeigt wird.
+    private function BackgroundImage(): string
+    {
+        $imageID = $this->ReadPropertyInteger('bgImage');
+        if (IPS_MediaExists($imageID)) {
+            $image = IPS_GetMedia($imageID);
+            if ($image['MediaType'] !== MEDIATYPE_IMAGE) {
+                return '';
+            }
+            $imageFile = explode('.', $image['MediaFile']);
+            $mime = self::IMAGE_TYPES[end($imageFile)] ?? '';
+            // IPS_GetMediaContent liefert den Inhalt bereits base64-codiert
+            return $mime === '' ? '' : 'data:' . $mime . ';base64,' . IPS_GetMediaContent($imageID);
+        }
+
+        return $this->ReadPropertyBoolean('BG_Off') ? $this->DefaultBackgroundImage() : '';
+    }
+
+    // Standard-Hintergrund als Data-URI. Eigene Methode, damit die Tests sehen, wann er kodiert wird.
+    protected function DefaultBackgroundImage(): string
+    {
+        $content = file_exists(self::DEFAULT_BACKGROUND) ? file_get_contents(self::DEFAULT_BACKGROUND) : false;
+        if ($content === false) {
+            $this->SendDebug('Image', 'Default background could not be loaded', 0);
+            return '';
+        }
+        return 'data:image/png;base64,' . base64_encode($content);
+    }
+
+    // Hook-Adresse statt Data-URI, sobald der Hook in diesem Kernel-Lauf registriert ist. Die Version (Hash
+    // des Inhalts) steht in der Adresse: neuer Inhalt ergibt eine neue Adresse, der Browser darf lange cachen.
+    // Was die Ausgabegrenze eines Hooks sprengen würde, bleibt eingebettet wie bisher.
+    private function ImageReference(string $key, string $dataUri): string
+    {
+        $token = $this->ImageHookActive() ? $this->ReadAttributeString('ImageHookToken') : '';
+        $comma = strpos($dataUri, ',');
+        if ($token === '' || $comma === false || !str_starts_with($dataUri, 'data:')
+            || intdiv((strlen($dataUri) - $comma - 1) * 3, 4) > $this->HookBodyLimit()) {
+            return $dataUri;
+        }
+        return '/hook/' . self::IMAGE_HOOK . $this->InstanceID . '?k=' . rawurlencode($key)
+            . '&v=' . substr(hash('sha256', $dataUri), 0, 16) . '&t=' . $token;
+    }
+
+    private function ImageHookActive(): bool
+    {
+        return $this->GetBuffer('ImageHook') === '1';
+    }
+
+    private function EnsureImageHookToken(): void
+    {
+        if ($this->ImageHookActive() && $this->ReadAttributeString('ImageHookToken') === '') {
+            $this->WriteAttributeString('ImageHookToken', bin2hex(random_bytes(16)));
+        }
+    }
+
+    // Größte Antwort, die Symcon unverändert ausliefert (ScriptOutputBufferLimit, ab Werk 1 MiB), mit Reserve.
+    private function HookBodyLimit(): int
+    {
+        $limit = 1048576;
+        try {
+            $option = IPS_GetOption('ScriptOutputBufferLimit');
+            if (is_numeric($option) && (int) $option > 0) {
+                $limit = (int) $option;
+            }
+        } catch (Throwable $e) {
+            $this->SendDebug('Image', 'ScriptOutputBufferLimit: ' . $e->getMessage(), 0);
+        }
+        return max(0, $limit - 1024);
+    }
+
+    // /hook/widgetsimages/<ID>?k=bgimage&v=<Version>&t=<Token>: der aktuell angezeigte Hintergrund.
+    // Ohne gültiges Token keine Antwort, außer dem Hintergrund kein Bildschlüssel.
+    protected function ProcessHookData(): void
+    {
+        $token = $this->ImageHookActive() ? $this->ReadAttributeString('ImageHookToken') : '';
+        $given = isset($_GET['t']) && is_string($_GET['t']) ? $_GET['t'] : '';
+        if ($token === '' || !hash_equals($token, $given)) {
+            $this->SendStatus(403);
+            return;
+        }
+        $key = isset($_GET['k']) && is_string($_GET['k']) ? $_GET['k'] : '';
+        $data = $key === 'bgimage' ? $this->BackgroundImage() : '';
+        $comma = strpos($data, ',');
+        $mime = $comma === false ? '' : substr($data, 5, (int) strpos($data, ';') - 5);
+        $bytes = $comma === false ? false : base64_decode(substr($data, $comma + 1), true);
+        if (!str_starts_with($data, 'data:') || !in_array($mime, self::IMAGE_TYPES, true) || $bytes === false) {
+            $this->SendStatus(404);
+            return;
+        }
+        $version = substr(hash('sha256', $data), 0, 16);
+        $current = isset($_GET['v']) && $_GET['v'] === $version;
+        // Nur die passende Version darf lange gecacht werden; eine alte Adresse bekommt den neuen Inhalt ungecacht.
+        $this->SendHeader('Cache-Control: ' . ($current ? 'private, max-age=31536000, immutable' : 'no-cache'));
+        $this->SendHeader('ETag: "' . $version . '"');
+        $this->SendHeader('X-Content-Type-Options: nosniff');
+        if ($current && trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === '"' . $version . '"') {
+            $this->SendStatus(304);
+            return;
+        }
+        $this->SendHeader('Content-Type: ' . $mime);
+        $this->SendHeader('Content-Length: ' . strlen($bytes));
+        echo $bytes;
+    }
+
+    // Eigene Methoden für Kopfzeilen und Status, damit die Tests den Hook ohne Webserver prüfen können.
+    protected function SendHeader(string $header): void
+    {
+        header($header);
+    }
+
+    protected function SendStatus(int $code): void
+    {
+        http_response_code($code);
     }
 
     // Wie bisher json_encode mit Standard-Flags (maskierte Schrägstriche halten Namen aus dem Skript-Tag heraus);
