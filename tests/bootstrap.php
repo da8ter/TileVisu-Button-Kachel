@@ -124,7 +124,8 @@ function check(bool $condition, string $label): void
     echo 'PASS: ' . $label . PHP_EOL;
 }
 
-require __DIR__ . '/../Widgets/module.php';
+// WIDGETS_MODULE wählt eine andere Fassung der Kachel (Gegenprobe gegen den Stand vor dem Nachrichtenfilter).
+require getenv('WIDGETS_MODULE') ?: __DIR__ . '/../Widgets/module.php';
 
 // Wie Symcons HookInstance: macht ProcessHookData aufrufbar (öffentlich, : void). Fängt Kopfzeilen und Status ab,
 // damit der Hook ohne Webserver prüfbar ist, und zählt, wie oft der Standard-Hintergrund kodiert wird.

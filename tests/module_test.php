@@ -8,6 +8,63 @@ set_error_handler(static function (int $severity, string $message, string $file,
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
 
+const VOR_FILTER = '5d49264'; // letzter Stand, der jede Aktualisierung an die Kachel schickte
+
+// VM_UPDATE nur bei echter Wertänderung: Zeilen [Bezeichnung, erwartete Nachrichten, gesendete Nachrichten].
+// Läuft auch gegen den Stand vor dem Filter; dort müssen genau die Zeilen fallen, die keine Nachricht erwarten.
+function nachrichtenfilter(): array
+{
+    global $variables;
+    world();
+    profile('Switch.Color', [assoc(0, 'Aus', 'Power', 0xFF0000), assoc(1, 'An', 'Bulb', 0x00FF00)], 'Light');
+    variable(101, false, 'Aus', 'Licht', 'Switch.Color');
+    variable(102, false, 'Aus', 'Pumpe', 'Switch.Color');
+    $m = tile(12600);
+    $m->properties['Schalter1'] = 101;
+    $m->properties['Schalter2'] = 102;
+    $m->ApplyChanges();
+    $zeilen = [];
+    $zaehle = static function (string $label, int $erwartet, callable $aktion) use ($m, &$zeilen): void {
+        $vorher = count($m->updates);
+        $aktion();
+        $zeilen[] = [$label, $erwartet, count($m->updates) - $vorher];
+    };
+    // $Data wie von Symcon: [neuer Wert, geändert, alter Wert, Zeitstempel]
+    $update = static fn (int $id, array $data): callable => static fn () => $m->MessageSink(0, $id, VM_UPDATE, $data);
+    $zaehle('Update without a new value ($Data[1] false) sends nothing', 0, $update(101, [false, false, false, 1]));
+    $variables[101]['value'] = true;
+    $variables[101]['formatted'] = 'An';
+    $zaehle('Changed value sends value and details', 2, $update(101, [true, true, false, 2]));
+    $variables[102]['value'] = true;
+    $variables[102]['formatted'] = 'An';
+    $zaehle('Another switch sends its own messages', 2, $update(102, [true, true, false, 3]));
+    // Die Kachel liest den aktuellen Wert: nach mehreren schnellen Änderungen sind die Nachrichten dieselben
+    $zaehle('Identical messages are not sent again (memory per switch)', 0, $update(101, [true, true, false, 4]));
+    $zaehle('ApplyChanges still sends the full update', 1, static fn () => $m->ApplyChanges());
+    $zaehle('After ApplyChanges the same messages go out again', 2, $update(101, [true, true, false, 5]));
+    $zaehle('... but only once', 0, $update(101, [true, true, false, 6]));
+    $m->GetVisualizationTile();
+    $zaehle('After the initial build of a tile they go out again', 2, $update(101, [true, true, false, 7]));
+    $m->GetVisualizationTile();
+    $zaehle('Without $Data[1] (other format) the update is sent', 2, $update(102, []));
+    return $zeilen;
+}
+
+// Führt diese Datei mit einer anderen Fassung der Kachel in einem eigenen Prozess aus: [Exitcode, Ausgabe].
+function unterprozess(string $moduleFile, string $mode): array
+{
+    $command = 'WIDGETS_MODULE=' . escapeshellarg($moduleFile) . ' ' . escapeshellarg(PHP_BINARY) . ' '
+        . escapeshellarg(__FILE__) . ' ' . escapeshellarg($mode) . ' 2>&1';
+    exec($command, $lines, $code);
+    return [$code, implode("\n", $lines)];
+}
+
+if (($argv[1] ?? '') === 'nachrichtenfilter') {
+    // Gegenprobe: dieselben Schritte mit einer anderen Fassung der Kachel
+    echo json_encode(nachrichtenfilter(), JSON_THROW_ON_ERROR);
+    exit(0);
+}
+
 $source = file_get_contents(__DIR__ . '/../Widgets/module.php');
 $html = file_get_contents(__DIR__ . '/../Widgets/module.html');
 $png = file_get_contents(__DIR__ . '/../imgs/kachelhintergrund1.png');
@@ -286,5 +343,35 @@ $m->defaultEncodings = 0;
 $m->hook(['k' => 'bgimage', 't' => str_repeat('f', 32)]);
 $m->hook(['k' => 'schalter1', 't' => $m->attributes['ImageHookToken']]);
 check($m->defaultEncodings === 0, 'Rejected hook requests encode nothing');
+
+// --- VM_UPDATE nur bei echter Wertänderung -------------------------------------------------------------
+$zeilen = nachrichtenfilter();
+foreach ($zeilen as [$label, $erwartet, $ist]) {
+    check($ist === $erwartet, $label . ' (' . $ist . ' messages)');
+}
+$repo = escapeshellarg(dirname(__DIR__));
+exec('git -C ' . $repo . ' cat-file -e ' . escapeshellarg(VOR_FILTER . '^{commit}') . ' 2>/dev/null', $unused, $gitCode);
+if ($gitCode !== 0) {
+    echo 'SKIP: ' . VOR_FILTER . ' not available, no counter-check of the message filter' . PHP_EOL;
+} else {
+    // module.php und module.html des früheren Stands in ein Temp-Verzeichnis, dort im eigenen Prozess
+    $dir = sys_get_temp_dir() . '/widgets-test-' . bin2hex(random_bytes(6));
+    mkdir($dir . '/Widgets', 0700, true);
+    foreach (['module.php', 'module.html'] as $datei) {
+        file_put_contents($dir . '/Widgets/' . $datei,
+            (string) shell_exec('git -C ' . $repo . ' show ' . escapeshellarg(VOR_FILTER . ':Widgets/' . $datei)));
+    }
+    [$code, $json] = unterprozess($dir . '/Widgets/module.php', 'nachrichtenfilter');
+    foreach (['module.php', 'module.html'] as $datei) {
+        unlink($dir . '/Widgets/' . $datei);
+    }
+    rmdir($dir . '/Widgets');
+    rmdir($dir);
+    $vorher = $code === 0 ? json_decode($json, true, 512, JSON_THROW_ON_ERROR) : [];
+    $fallend = array_column(array_filter($vorher, static fn (array $z): bool => $z[1] !== $z[2]), 0);
+    $still = array_column(array_filter($zeilen, static fn (array $z): bool => $z[1] === 0), 0);
+    check($code === 0 && $still !== [] && $fallend === $still,
+        'Counter-check: without the filter (' . VOR_FILTER . ') exactly the ' . count($still) . ' checks expecting no message fail');
+}
 
 echo 'OK' . PHP_EOL;
